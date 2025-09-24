@@ -1,0 +1,130 @@
+<div class="anonymization-container">
+  <header class="header">
+    <h1>Data Anonymization Portal</h1>
+    <p>Securely anonymize your sensitive data files</p>
+  </header>
+
+  <form class="anonymization-form" (ngSubmit)="onAnonymize()" #anonymizationForm="ngForm">
+    <!-- Username Input -->
+    <div class="form-group">
+      <label for="username" class="form-label">
+        <i class="icon-user" aria-hidden="true"></i>
+        Username
+      </label>
+      <input
+        id="username"
+        type="text"
+        class="form-input"
+        [(ngModel)]="userName"
+        name="username"
+        placeholder="Enter your username"
+        required
+        autocomplete="username"
+        [disabled]="isLoading()"
+      />
+    </div>
+
+    <!-- File Upload -->
+    <div class="form-group">
+      <label for="fileInput" class="form-label">
+        <i class="icon-upload" aria-hidden="true"></i>
+        Data File (CSV or Text)
+      </label>
+      <div class="file-input-wrapper">
+        <input
+          id="fileInput"
+          type="file"
+          class="file-input"
+          accept=".csv,.txt"
+          (change)="onFileSelected($event)"
+          [disabled]="isLoading()"
+          #fileInput
+        />
+        <label for="fileInput" class="file-input-label">
+          <i class="icon-paperclip" aria-hidden="true"></i>
+          {{ selectedFile() ? selectedFile()!.name : 'Choose file...' }}
+        </label>
+      </div>
+      <small class="help-text">
+        Supported formats: CSV (.csv) and Text (.txt) files
+      </small>
+    </div>
+
+    <!-- File Info -->
+    @if (selectedFile()) {
+      <div class="file-info">
+        <div class="file-details">
+          <span class="file-name">{{ selectedFile()!.name }}</span>
+          <span class="file-size">{{ (selectedFile()!.size / 1024).toFixed(2) }} KB</span>
+        </div>
+      </div>
+    }
+
+    <!-- Error Message -->
+    @if (error()) {
+      <div class="error-message" role="alert">
+        <i class="icon-alert-circle" aria-hidden="true"></i>
+        {{ error() }}
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="!userName().trim() || !selectedFile() || isLoading()"
+      >
+        @if (isLoading()) {
+          <span class="loading-spinner" aria-hidden="true"></span>
+          Processing...
+        } @else {
+          <i class="icon-shield" aria-hidden="true"></i>
+          Anonymize
+        }
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="resetForm()"
+        [disabled]="isLoading()"
+      >
+        <i class="icon-refresh" aria-hidden="true"></i>
+        Reset
+      </button>
+    </div>
+  </form>
+
+  <!-- Results Section -->
+  @if (result()) {
+    <div class="results-section">
+      <div class="results-header">
+        <h2>Anonymization Results</h2>
+        <button
+          type="button"
+          class="btn btn-outline"
+          (click)="downloadResult()"
+        >
+          <i class="icon-download" aria-hidden="true"></i>
+          Download
+        </button>
+      </div>
+      
+      <div class="results-content">
+        <pre class="results-data">{{ result() }}</pre>
+      </div>
+    </div>
+  }
+
+  <!-- Loading Overlay -->
+  @if (isLoading()) {
+    <div class="loading-overlay" aria-live="polite">
+      <div class="loading-content">
+        <div class="loading-spinner-large" aria-hidden="true"></div>
+        <p>Processing your file...</p>
+        <small>This may take a few moments depending on file size</small>
+      </div>
+    </div>
+  }
+</div>
