@@ -28,14 +28,14 @@
     <div class="form-group">
       <label for="fileInput" class="form-label">
         <i class="icon-upload" aria-hidden="true"></i>
-        Data File (CSV or Text)
+        Data File (CSV or JSON)
       </label>
       <div class="file-input-wrapper">
         <input
           id="fileInput"
           type="file"
           class="file-input"
-          accept=".csv,.txt"
+          accept=".csv,.json"
           (change)="onFileSelected($event)"
           [disabled]="isLoading()"
           #fileInput
@@ -46,7 +46,49 @@
         </label>
       </div>
       <small class="help-text">
-        Supported formats: CSV (.csv) and Text (.txt) files
+        Supported formats: CSV (.csv) and JSON (.json) files (Max 10MB)
+      </small>
+    </div>
+
+    <!-- Anonymization Strategy -->
+    <div class="form-group">
+      <label for="strategy" class="form-label">
+        <i class="icon-shield" aria-hidden="true"></i>
+        Anonymization Strategy
+      </label>
+      <select
+        id="strategy"
+        class="form-select"
+        [(ngModel)]="selectedStrategy"
+        name="strategy"
+        [disabled]="isLoading()"
+      >
+        @for (strategy of availableStrategies; track strategy) {
+          <option [value]="strategy">{{ strategy }}</option>
+        }
+      </select>
+      <small class="help-text">
+        {{ getStrategyDescription(selectedStrategy()) }}
+      </small>
+    </div>
+
+    <!-- Format Preservation -->
+    <div class="form-group">
+      <div class="checkbox-wrapper">
+        <input
+          id="preserveFormat"
+          type="checkbox"
+          class="form-checkbox"
+          [(ngModel)]="preserveFormat"
+          name="preserveFormat"
+          [disabled]="isLoading()"
+        />
+        <label for="preserveFormat" class="checkbox-label">
+          Preserve original format
+        </label>
+      </div>
+      <small class="help-text">
+        Keep the same structure and format as the original file
       </small>
     </div>
 
@@ -107,12 +149,80 @@
           (click)="downloadResult()"
         >
           <i class="icon-download" aria-hidden="true"></i>
-          Download
+          Download File
         </button>
       </div>
       
       <div class="results-content">
-        <pre class="results-data">{{ result() }}</pre>
+        <div class="result-summary">
+          <div class="summary-item">
+            <span class="label">Original File:</span>
+            <span class="value">{{ result()!.originalFileName }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Anonymized File:</span>
+            <span class="value">{{ result()!.anonymizedFileName }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Strategy Used:</span>
+            <span class="value">{{ result()!.strategy }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Records Processed:</span>
+            <span class="value">{{ result()!.recordsProcessed }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Fields Processed:</span>
+            <span class="value">{{ result()!.fieldsProcessed }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">File Size:</span>
+            <span class="value">{{ (result()!.fileSize / 1024).toFixed(2) }} KB</span>
+          </div>
+        </div>
+        
+        @if (result()!.message) {
+          <div class="success-message">
+            <i class="icon-check-circle" aria-hidden="true"></i>
+            {{ result()!.message }}
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- File Management Section -->
+  @if (anonymizedFiles().length > 0) {
+    <div class="file-management-section">
+      <div class="section-header">
+        <h2>Previously Anonymized Files</h2>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="loadAnonymizedFiles()"
+        >
+          <i class="icon-refresh" aria-hidden="true"></i>
+          Refresh
+        </button>
+      </div>
+      
+      <div class="file-list">
+        @for (fileName of anonymizedFiles(); track fileName) {
+          <div class="file-item">
+            <div class="file-name">
+              <i class="icon-file" aria-hidden="true"></i>
+              {{ fileName }}
+            </div>
+            <button
+              type="button"
+              class="btn btn-small btn-outline"
+              (click)="downloadAnonymizedFile(fileName)"
+            >
+              <i class="icon-download" aria-hidden="true"></i>
+              Download
+            </button>
+          </div>
+        }
       </div>
     </div>
   }

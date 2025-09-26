@@ -1,8 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
+import { 
+  FileAnonymizationService, 
+  FileAnonymizationResponse, 
+  AnonymizationStrategy,
+  FileUploadOptions 
+} from '../../shared/services/file-anonymization.service';
 
 @Component({
   selector: 'app-anonymization',
@@ -10,15 +16,22 @@ import { Observable, catchError, of } from 'rxjs';
   templateUrl: './anonymization.html',
   styleUrl: './anonymization.scss'
 })
-export class Anonymization {
+export class Anonymization implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly fileAnonymizationService = inject(FileAnonymizationService);
   
   // Form state using Angular signals
   protected readonly userName = signal('');
   protected readonly selectedFile = signal<File | null>(null);
+  protected readonly selectedStrategy = signal<AnonymizationStrategy>('MASKING');
+  protected readonly preserveFormat = signal(true);
   protected readonly isLoading = signal(false);
-  protected readonly result = signal<string | null>(null);
+  protected readonly result = signal<FileAnonymizationResponse | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly anonymizedFiles = signal<string[]>([]);
+
+  // Available strategies for the UI
+  protected readonly availableStrategies = this.fileAnonymizationService.getAvailableStrategies();
 
   /**
    * Handle file selection from input
@@ -29,15 +42,23 @@ export class Anonymization {
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       
-      // Validate file type
-      const allowedTypes = ['.csv', '.txt'];
+      // Validate file type - now supporting CSV and JSON
+      const allowedTypes = ['.csv', '.json'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+      
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        this.error.set('File size exceeds 10MB limit.');
+        this.selectedFile.set(null);
+        input.value = '';
+        return;
+      }
       
       if (allowedTypes.includes(fileExtension)) {
         this.selectedFile.set(file);
         this.error.set(null);
       } else {
-        this.error.set('Please select a CSV or text file.');
+        this.error.set('Please select a CSV or JSON file.');
         this.selectedFile.set(null);
         input.value = '';
       }
@@ -45,47 +66,8 @@ export class Anonymization {
   }
 
   /**
-   * Process file content and prepare for anonymization
-   */
-  private async processFileContent(file: File): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        
-        if (file.name.toLowerCase().endsWith('.csv')) {
-          // Parse CSV content
-          const lines = content.split('\n').filter(line => line.trim());
-          const headers = lines[0].split(',').map(h => h.trim());
-          const data: any[] = [];
-          
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim());
-            const row: any = {};
-            headers.forEach((header, index) => {
-              row[header] = values[index] || '';
-            });
-            data.push(row);
-          }
-          resolve(data);
-        } else {
-          // For text files, treat each line as data
-          const lines = content.split('\n').filter(line => line.trim());
-          const data = lines.map((line, index) => ({
-            line: index + 1,
-            content: line.trim()
-          }));
-          resolve(data);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
-    });
-  }
-
-  /**
-   * Handle anonymization process
-   * Validates inputs and calls the API
+   * Handle file upload and anonymization process
+   * Uses the new file upload API endpoint
    */
   async onAnonymize(): Promise<void> {
     // Validate inputs
@@ -104,46 +86,61 @@ export class Anonymization {
     this.result.set(null);
 
     try {
-      // Process file content
-      const fileData = await this.processFileContent(this.selectedFile()!);
-      
-      // Prepare API request
-      const requestBody = {
-        data: fileData,
-        strategy: 'basic', // Default strategy - could be made configurable
-        preserveFormat: true,
-        seed: Math.floor(Math.random() * 1000000)
+      // Prepare upload options
+      const options: FileUploadOptions = {
+        strategy: this.selectedStrategy(),
+        preserveFormat: this.preserveFormat(),
+        seed: Math.floor(Math.random() * 1000000),
+        outputFileName: `${this.userName()}_${this.selectedFile()!.name.split('.')[0]}_anon`
       };
 
-      // Call anonymization API
-      this.callAnonymizationAPI(requestBody).subscribe({
+      // Upload and anonymize file using the service
+      this.fileAnonymizationService.uploadAndAnonymize(this.selectedFile()!, options).subscribe({
         next: (response) => {
-          this.result.set(JSON.stringify(response, null, 2));
+          this.result.set(response);
           this.isLoading.set(false);
+          // Refresh the file list
+          this.loadAnonymizedFiles();
         },
         error: (error) => {
           this.error.set(`Anonymization failed: ${error.message || 'Unknown error'}`);
           this.isLoading.set(false);
+          console.error('Anonymization error:', error);
         }
       });
 
     } catch (error) {
-      this.error.set(`File processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.error.set(`File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       this.isLoading.set(false);
     }
   }
 
   /**
-   * Call the anonymization API
+   * Load list of anonymized files
    */
-  private callAnonymizationAPI(data: any): Observable<any> {
-    return this.http.post('/api/v1/anonymization/quick-anonymize', data)
-      .pipe(
-        catchError(error => {
-          console.error('API Error:', error);
-          return of({ error: 'Failed to anonymize data' });
-        })
-      );
+  loadAnonymizedFiles(): void {
+    this.fileAnonymizationService.listFiles().subscribe({
+      next: (files) => {
+        this.anonymizedFiles.set(files);
+      },
+      error: (error) => {
+        console.error('Failed to load file list:', error);
+      }
+    });
+  }
+
+  /**
+   * Download an anonymized file
+   */
+  downloadAnonymizedFile(fileName: string): void {
+    this.fileAnonymizationService.downloadAndSave(fileName);
+  }
+
+  /**
+   * Get strategy description for UI
+   */
+  getStrategyDescription(strategy: AnonymizationStrategy): string {
+    return this.fileAnonymizationService.getStrategyDescription(strategy);
   }
 
   /**
@@ -164,17 +161,19 @@ export class Anonymization {
   }
 
   /**
-   * Download anonymized result as file
+   * Download the anonymized file from the server
    */
   downloadResult(): void {
-    if (!this.result()) return;
+    const result = this.result();
+    if (!result || !result.anonymizedFileName) return;
 
-    const blob = new Blob([this.result()!], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `anonymized_${this.userName()}_${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    this.fileAnonymizationService.downloadAndSave(result.anonymizedFileName, result.originalFileName);
+  }
+
+  /**
+   * Initialize component - load existing files
+   */
+  ngOnInit(): void {
+    this.loadAnonymizedFiles();
   }
 }

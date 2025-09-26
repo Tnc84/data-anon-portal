@@ -3,3 +3,11 @@
 
 export type { AnonymizationRequest } from './models/anonymization-request';
 export type { AnonymizationResponse } from './models/anonymization-response';
+export type { FileAnonymizationResponse } from './models/file-anonymization-response';
+
+// Authentication models
+export type { AuthenticationRequest } from './models/authentication-request';
+export type { RegisterRequest } from './models/register-request';
+export type { RefreshTokenRequest } from './models/refresh-token-request';
+export type { AuthenticationResponse, User } from './models/authentication-response';
+export type { ErrorResponse } from './models/error-response';
