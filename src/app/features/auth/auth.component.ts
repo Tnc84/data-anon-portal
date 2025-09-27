@@ -43,46 +43,60 @@ import { AuthenticationRequest, RegisterRequest } from '../../shared/api/models'
 
         <form [formGroup]="authForm" (ngSubmit)="onSubmit()" class="auth-form">
           <!-- Registration-only fields -->
-          <div *ngIf="!isLoginMode()" class="form-row">
-            <div class="form-group">
-              <label for="firstName">First Name</label>
-              <input
-                id="firstName"
-                type="text"
-                formControlName="firstName"
-                [class.error]="isFieldInvalid('firstName')"
-                placeholder="Enter your first name">
-              <div *ngIf="isFieldInvalid('firstName')" class="error-message">
-                First name is required
+          @if (!isLoginMode()) {
+            <div class="form-row">
+              <div class="form-group">
+                <label for="firstName">First Name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  formControlName="firstName"
+                  [class.error]="isFieldInvalid('firstName')"
+                  placeholder="Enter your first name">
+                @if (isFieldInvalid('firstName')) {
+                  <div class="error-message">
+                    First name is required
+                  </div>
+                }
+              </div>
+              <div class="form-group">
+                <label for="lastName">Last Name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  formControlName="lastName"
+                  [class.error]="isFieldInvalid('lastName')"
+                  placeholder="Enter your last name">
+                @if (isFieldInvalid('lastName')) {
+                  <div class="error-message">
+                    Last name is required
+                  </div>
+                }
               </div>
             </div>
-            <div class="form-group">
-              <label for="lastName">Last Name</label>
-              <input
-                id="lastName"
-                type="text"
-                formControlName="lastName"
-                [class.error]="isFieldInvalid('lastName')"
-                placeholder="Enter your last name">
-              <div *ngIf="isFieldInvalid('lastName')" class="error-message">
-                Last name is required
-              </div>
-            </div>
-          </div>
+          }
 
-          <div *ngIf="!isLoginMode()" class="form-group">
-            <label for="username">Username</label>
-            <input
-              id="username"
-              type="text"
-              formControlName="username"
-              [class.error]="isFieldInvalid('username')"
-              placeholder="Choose a username">
-            <div *ngIf="isFieldInvalid('username')" class="error-message">
-              <span *ngIf="authForm.get('username')?.errors?.['required']">Username is required</span>
-              <span *ngIf="authForm.get('username')?.errors?.['minlength']">Username must be at least 3 characters</span>
+          @if (!isLoginMode()) {
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input
+                id="username"
+                type="text"
+                formControlName="username"
+                [class.error]="isFieldInvalid('username')"
+                placeholder="Choose a username">
+              @if (isFieldInvalid('username')) {
+                <div class="error-message">
+                  @if (authForm.get('username')?.errors?.['required']) {
+                    <span>Username is required</span>
+                  }
+                  @if (authForm.get('username')?.errors?.['minlength']) {
+                    <span>Username must be at least 3 characters</span>
+                  }
+                </div>
+              }
             </div>
-          </div>
+          }
 
           <div class="form-group">
             <label for="email">{{ isLoginMode() ? 'Username or Email' : 'Email' }}</label>
@@ -92,11 +106,19 @@ import { AuthenticationRequest, RegisterRequest } from '../../shared/api/models'
               [formControlName]="isLoginMode() ? 'usernameOrEmail' : 'email'"
               [class.error]="isFieldInvalid(isLoginMode() ? 'usernameOrEmail' : 'email')"
               [placeholder]="isLoginMode() ? 'Enter username or email' : 'Enter your email'">
-            <div *ngIf="isFieldInvalid(isLoginMode() ? 'usernameOrEmail' : 'email')" class="error-message">
-              <span *ngIf="isLoginMode()">Username or email is required</span>
-              <span *ngIf="!isLoginMode() && authForm.get('email')?.errors?.['required']">Email is required</span>
-              <span *ngIf="!isLoginMode() && authForm.get('email')?.errors?.['email']">Please enter a valid email</span>
-            </div>
+            @if (isFieldInvalid(isLoginMode() ? 'usernameOrEmail' : 'email')) {
+              <div class="error-message">
+                @if (isLoginMode()) {
+                  <span>Username or email is required</span>
+                }
+                @if (!isLoginMode() && authForm.get('email')?.errors?.['required']) {
+                  <span>Email is required</span>
+                }
+                @if (!isLoginMode() && authForm.get('email')?.errors?.['email']) {
+                  <span>Please enter a valid email</span>
+                }
+              </div>
+            }
           </div>
 
           <div class="form-group">
@@ -107,43 +129,61 @@ import { AuthenticationRequest, RegisterRequest } from '../../shared/api/models'
               formControlName="password"
               [class.error]="isFieldInvalid('password')"
               placeholder="Enter your password">
-            <div *ngIf="isFieldInvalid('password')" class="error-message">
-              <span *ngIf="authForm.get('password')?.errors?.['required']">Password is required</span>
-              <span *ngIf="authForm.get('password')?.errors?.['minlength']">Password must be at least 6 characters</span>
+            @if (isFieldInvalid('password')) {
+              <div class="error-message">
+                @if (authForm.get('password')?.errors?.['required']) {
+                  <span>Password is required</span>
+                }
+                @if (authForm.get('password')?.errors?.['minlength']) {
+                  <span>Password must be at least 6 characters</span>
+                }
+              </div>
+            }
+          </div>
+
+          @if (isLoginMode()) {
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="rememberMe">
+                <span class="checkmark"></span>
+                Remember me
+              </label>
             </div>
-          </div>
+          }
 
-          <div *ngIf="isLoginMode()" class="form-options">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="rememberMe">
-              <span class="checkmark"></span>
-              Remember me
-            </label>
-          </div>
-
-          <div *ngIf="errorMessage()" class="error-banner">
-            {{ errorMessage() }}
-          </div>
+          @if (errorMessage()) {
+            <div class="error-banner">
+              {{ errorMessage() }}
+            </div>
+          }
 
           <button 
             type="submit" 
             class="submit-btn"
             [disabled]="authForm.invalid || isLoading()"
             [class.loading]="isLoading()">
-            <span *ngIf="!isLoading()">{{ isLoginMode() ? 'Sign In' : 'Create Account' }}</span>
-            <span *ngIf="isLoading()" class="loading-spinner"></span>
+            @if (!isLoading()) {
+              <span>{{ isLoginMode() ? 'Sign In' : 'Create Account' }}</span>
+            }
+            @if (isLoading()) {
+              <span class="loading-spinner"></span>
+            }
           </button>
         </form>
 
         <div class="auth-footer">
-          <p *ngIf="isLoginMode()">
-            Don't have an account? 
-            <button type="button" class="link-btn" (click)="setMode(false)">Sign up</button>
-          </p>
-          <p *ngIf="!isLoginMode()">
-            Already have an account? 
-            <button type="button" class="link-btn" (click)="setMode(true)">Sign in</button>
-          </p>
+          @if (isLoginMode()) {
+            <p>
+              Don't have an account? 
+              <button type="button" class="link-btn" (click)="setMode(false)">Sign up</button>
+            </p>
+          }
+          @if (!isLoginMode()) {
+            <p>
+              Already have an account? 
+              <button type="button" class="link-btn" (click)="setMode(true)">Sign in</button>
+            </p>
+          }
         </div>
       </div>
     </div>
