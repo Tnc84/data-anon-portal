@@ -1,42 +1,10 @@
 <div class="anonymization-container">
   <header class="header">
     <h1>Data Anonymization Portal</h1>
-    <p>Securely anonymize your sensitive data files</p>
-    
-    <!-- Role-based user info display -->
-    <div class="user-info">
-      <span class="user-role" [class.admin]="isAdmin()">
-        {{ currentUserRole() || 'USER' }}
-      </span>
-      
-      <!-- Admin-only features notice -->
-      <div *hasRole="'ADMIN'" class="admin-notice">
-        <i class="icon-shield" aria-hidden="true"></i>
-        Admin features available
-      </div>
-    </div>
+    <p>Hello {{ authService.currentUser()?.username || 'User' }}</p>
   </header>
 
   <form class="anonymization-form" (ngSubmit)="onAnonymize()" #anonymizationForm="ngForm">
-    <!-- Username Input -->
-    <div class="form-group">
-      <label for="username" class="form-label">
-        <i class="icon-user" aria-hidden="true"></i>
-        Username
-      </label>
-      <input
-        id="username"
-        type="text"
-        class="form-input"
-        [(ngModel)]="userName"
-        name="username"
-        placeholder="Enter your username"
-        required
-        autocomplete="username"
-        [disabled]="isLoading()"
-      />
-    </div>
-
     <!-- File Upload -->
     <div class="form-group">
       <label for="fileInput" class="form-label">
@@ -128,7 +96,7 @@
       <button
         type="submit"
         class="btn btn-primary"
-        [disabled]="!userName().trim() || !selectedFile() || isLoading()"
+        [disabled]="!selectedFile() || isLoading()"
       >
         @if (isLoading()) {
           <span class="loading-spinner" aria-hidden="true"></span>

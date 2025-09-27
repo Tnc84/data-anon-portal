@@ -21,10 +21,9 @@ import { HasRoleDirective } from '../../shared/directives/has-role.directive';
 export class Anonymization implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly fileAnonymizationService = inject(FileAnonymizationService);
-  private readonly authService = inject(AuthService);
+  protected readonly authService = inject(AuthService);
   
   // Form state using Angular signals
-  protected readonly userName = signal('');
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly selectedStrategy = signal<AnonymizationStrategy>('MASKING');
   protected readonly preserveFormat = signal(true);
@@ -78,11 +77,6 @@ export class Anonymization implements OnInit {
    */
   async onAnonymize(): Promise<void> {
     // Validate inputs
-    if (!this.userName().trim()) {
-      this.error.set('Please enter a username.');
-      return;
-    }
-
     if (!this.selectedFile()) {
       this.error.set('Please select a file to anonymize.');
       return;
@@ -98,7 +92,7 @@ export class Anonymization implements OnInit {
         strategy: this.selectedStrategy(),
         preserveFormat: this.preserveFormat(),
         seed: Math.floor(Math.random() * 1000000),
-        outputFileName: `${this.userName()}_${this.selectedFile()!.name.split('.')[0]}_anon`
+        outputFileName: `${this.authService.currentUser()?.username || 'user'}_${this.selectedFile()!.name.split('.')[0]}_anon`
       };
 
       // Upload and anonymize file using the service
@@ -172,7 +166,6 @@ export class Anonymization implements OnInit {
    * Reset form to initial state
    */
   resetForm(): void {
-    this.userName.set('');
     this.selectedFile.set(null);
     this.result.set(null);
     this.error.set(null);
