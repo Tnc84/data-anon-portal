@@ -2,6 +2,19 @@
   <header class="header">
     <h1>Data Anonymization Portal</h1>
     <p>Securely anonymize your sensitive data files</p>
+    
+    <!-- Role-based user info display -->
+    <div class="user-info">
+      <span class="user-role" [class.admin]="isAdmin()">
+        {{ currentUserRole() || 'USER' }}
+      </span>
+      
+      <!-- Admin-only features notice -->
+      <div *hasRole="'ADMIN'" class="admin-notice">
+        <i class="icon-shield" aria-hidden="true"></i>
+        Admin features available
+      </div>
+    </div>
   </header>
 
   <form class="anonymization-form" (ngSubmit)="onAnonymize()" #anonymizationForm="ngForm">
@@ -213,14 +226,28 @@
               <i class="icon-file" aria-hidden="true"></i>
               {{ fileName }}
             </div>
-            <button
-              type="button"
-              class="btn btn-small btn-outline"
-              (click)="downloadAnonymizedFile(fileName)"
-            >
-              <i class="icon-download" aria-hidden="true"></i>
-              Download
-            </button>
+            <div class="file-actions">
+              <button
+                type="button"
+                class="btn btn-small btn-outline"
+                (click)="downloadAnonymizedFile(fileName)"
+              >
+                <i class="icon-download" aria-hidden="true"></i>
+                Download
+              </button>
+              
+              <!-- Admin-only delete button -->
+              <button
+                *hasRole="'ADMIN'"
+                type="button"
+                class="btn btn-small btn-danger"
+                (click)="deleteFile(fileName)"
+                title="Delete file (Admin only)"
+              >
+                <i class="icon-trash" aria-hidden="true"></i>
+                Delete
+              </button>
+            </div>
           </div>
         }
       </div>

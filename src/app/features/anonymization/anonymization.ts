@@ -9,16 +9,19 @@ import {
   AnonymizationStrategy,
   FileUploadOptions 
 } from '../../shared/services/file-anonymization.service';
+import { AuthService } from '../../shared/services/auth.service';
+import { HasRoleDirective } from '../../shared/directives/has-role.directive';
 
 @Component({
   selector: 'app-anonymization',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HasRoleDirective],
   templateUrl: './anonymization.html',
   styleUrl: './anonymization.scss'
 })
 export class Anonymization implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly fileAnonymizationService = inject(FileAnonymizationService);
+  private readonly authService = inject(AuthService);
   
   // Form state using Angular signals
   protected readonly userName = signal('');
@@ -32,6 +35,10 @@ export class Anonymization implements OnInit {
 
   // Available strategies for the UI
   protected readonly availableStrategies = this.fileAnonymizationService.getAvailableStrategies();
+
+  // Role-based UI state
+  protected readonly currentUserRole = this.authService.getCurrentUserRole;
+  protected readonly isAdmin = this.authService.isAdminSignal;
 
   /**
    * Handle file selection from input
@@ -134,6 +141,24 @@ export class Anonymization implements OnInit {
    */
   downloadAnonymizedFile(fileName: string): void {
     this.fileAnonymizationService.downloadAndSave(fileName);
+  }
+
+  /**
+   * Delete an anonymized file (Admin only - UI restriction)
+   * Note: Real security validation must be done on the backend
+   */
+  deleteFile(fileName: string): void {
+    if (!this.isAdmin()) {
+      console.warn('Delete operation attempted by non-admin user');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete "${fileName}"?`)) {
+      // TODO: Implement delete file API call when backend endpoint is available
+      // For now, just remove from local list (demo purposes)
+      this.anonymizedFiles.update(files => files.filter(f => f !== fileName));
+      console.log(`File ${fileName} would be deleted (backend implementation needed)`);
+    }
   }
 
   /**

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { TokenService } from './token.service';
+import { JwtDecoderService } from './jwt-decoder.service';
 import { 
   AuthenticationRequest, 
   RegisterRequest, 
@@ -26,6 +27,7 @@ import {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenService = inject(TokenService);
+  private readonly jwtDecoder = inject(JwtDecoderService);
   private readonly router = inject(Router);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/auth`;
 
@@ -48,14 +50,23 @@ export class AuthService {
   /**
    * Login user with credentials
    * @param credentials - Username/email and password
+   * @param returnUrl - Optional URL to redirect to after successful login
    * @returns Observable with authentication response
    */
-  login(credentials: AuthenticationRequest): Observable<AuthenticationResponse> {
+  login(credentials: AuthenticationRequest, returnUrl?: string): Observable<AuthenticationResponse> {
     this.isLoadingSignal.set(true);
     
     return this.http.post<AuthenticationResponse>(`${this.baseUrl}/login`, credentials)
       .pipe(
-        tap(response => this.handleAuthSuccess(response)),
+        tap(response => {
+          this.handleAuthSuccess(response);
+          
+          // Redirect to returnUrl or default route after successful login
+          if (response.success) {
+            const redirectUrl = returnUrl || '/anonymization';
+            this.router.navigate([redirectUrl]);
+          }
+        }),
         catchError(error => this.handleAuthError(error)),
         tap(() => this.isLoadingSignal.set(false))
       );
@@ -163,6 +174,36 @@ export class AuthService {
   }
 
   /**
+   * Get current user role as computed signal for reactive UI
+   * @returns Computed signal with current user role
+   */
+  getCurrentUserRole = computed(() => {
+    const user = this.currentUserSubject.value;
+    return user?.role || null;
+  });
+
+  /**
+   * Check if current user is admin (reactive signal)
+   * @returns Computed signal indicating admin status
+   */
+  isAdminSignal = computed(() => {
+    const role = this.getCurrentUserRole();
+    return role === 'ADMIN';
+  });
+
+  /**
+   * Check if current user has specific role (reactive signal)
+   * @param requiredRole Role to check for
+   * @returns Computed signal indicating role status
+   */
+  hasRoleSignal(requiredRole: string) {
+    return computed(() => {
+      const role = this.getCurrentUserRole();
+      return role === requiredRole;
+    });
+  }
+
+  /**
    * Initialize authentication state from stored tokens
    */
   private initializeAuthState(): void {
@@ -170,13 +211,19 @@ export class AuthService {
     this.isAuthenticatedSignal.set(isAuthenticated);
     
     if (isAuthenticated) {
-      // Optionally load user profile on initialization
-      this.getProfile().subscribe({
-        error: () => {
-          // If profile loading fails, user might not be properly authenticated
+      // Extract user info from JWT token instead of calling profile endpoint
+      const accessToken = this.tokenService.getAccessToken();
+      if (accessToken) {
+        const user = this.jwtDecoder.getUserFromToken(accessToken);
+        if (user) {
+          console.log('🔍 User loaded from JWT token:', user);
+          this.currentUserSubject.next(user);
+        } else {
+          console.warn('⚠️ Failed to decode user from JWT token');
+          // Token might be invalid, logout
           this.logout();
         }
-      });
+      }
     }
   }
 

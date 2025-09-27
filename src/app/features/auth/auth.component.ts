@@ -494,17 +494,17 @@ export class AuthComponent {
       rememberMe: this.authForm.value.rememberMe
     };
 
-    this.authService.login(credentials)
+    // Get return URL from query params
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+
+    this.authService.login(credentials, returnUrl)
       .pipe(finalize(() => {}))
       .subscribe({
         next: (response) => {
-          if (response.success) {
-            // Get return URL or default to anonymization page
-            const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/anonymization';
-            this.router.navigate([returnUrl]);
-          } else {
+          if (!response.success) {
             this.errorMessageSignal.set(response.message || 'Login failed');
           }
+          // Success navigation is handled by AuthService now
         },
         error: (error) => {
           console.error('Login error:', error);

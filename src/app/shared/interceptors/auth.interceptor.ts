@@ -25,16 +25,49 @@ export class AuthInterceptor implements HttpInterceptor {
    * @returns Observable of HTTP events
    */
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
+    console.log('🔍 AuthInterceptor called for:', request.url);
+    
     // Skip token attachment for auth endpoints (login, register, refresh)
     if (this.isAuthEndpoint(request.url)) {
+      console.log('⏭️ Skipping auth endpoint:', request.url);
       return next.handle(request);
+    }
+
+    // Check if token is expired or expiring soon before making the request
+    if (this.tokenService.isTokenExpired()) {
+      console.log('⚠️ Token expired, attempting refresh');
+      // Token is already expired, try to refresh
+      if (this.tokenService.getRefreshToken()) {
+        return this.handle401Error(request, next);
+      } else {
+        // No refresh token, logout user
+        this.authService.logout().subscribe();
+        return throwError(() => new Error('Token expired and no refresh token available'));
+      }
+    }
+
+    // Check if token is expiring soon and refresh proactively
+    if (this.tokenService.isTokenExpiringSoon() && this.tokenService.getRefreshToken() && !this.isRefreshing) {
+      console.log('⚠️ Token expiring soon, attempting refresh');
+      return this.handle401Error(request, next);
     }
 
     // Add JWT token to request
     const authenticatedRequest = this.addTokenToRequest(request);
+    
+    const token = this.tokenService.getAccessToken();
+    console.log('🔑 Token available:', !!token);
+    console.log('📤 Request headers:', authenticatedRequest.headers.keys());
+    
+    if (token) {
+      console.log('✅ Authorization header added');
+    } else {
+      console.log('❌ No token available to add');
+    }
 
     return next.handle(authenticatedRequest).pipe(
       catchError((error: HttpErrorResponse) => {
+        console.log('❌ Request failed:', error.status, error.message);
         // Handle 401 Unauthorized responses
         if (error.status === 401 && this.tokenService.getRefreshToken()) {
           return this.handle401Error(authenticatedRequest, next);

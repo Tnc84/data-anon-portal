@@ -78,6 +78,21 @@ export class TokenService {
   }
 
   /**
+   * Check if token will expire soon (within 5 minutes)
+   * @returns true if token expires within 5 minutes
+   */
+  isTokenExpiringSoon(): boolean {
+    const expiryTime = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
+    
+    if (!expiryTime) {
+      return false;
+    }
+
+    const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000); // 5 minutes in milliseconds
+    return parseInt(expiryTime, 10) <= fiveMinutesFromNow;
+  }
+
+  /**
    * Check if user has valid tokens (authenticated)
    * @returns true if user has valid access token
    */
